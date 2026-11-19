@@ -93,6 +93,8 @@ select.paysel:focus{outline:2px solid var(--primary);outline-offset:1px}
 .panel .pv{background:var(--bg);min-height:400px;overflow:auto;padding:12px}
 .panel .pv canvas,.panel .pv img{display:block;max-width:100%;margin:0 auto 12px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .panel .pv .nopdf{color:var(--muted);text-align:center;padding:48px 24px}
+.panel .pv .attach{border:2px dashed var(--purple);border-radius:12px;background:var(--purple-soft);margin:12px;color:var(--ink)}
+.panel .pv .attach.over{background:#E9DDF7}
 .panel .pf{padding:20px;overflow:auto}
 .panel .pfoot{border-top:1px solid var(--line2);padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .extra-row{display:grid;grid-template-columns:1fr 1fr 36px;gap:6px;margin-bottom:6px}
@@ -706,8 +708,37 @@ function openPanel(id) {
     $('fFreee').disabled = !canFreee; $('fFreee').checked = canFreee && S.boot && S.boot.freeeReady;
     $('btnExclude').hidden = r['状態'] === '反映済';
     $('overlay').classList.add('show'); $('panel').classList.add('show');
-    showFile($('pPreview'), r['DriveファイルID']);
+    if (!r['DriveファイルID'] && canEdit()) showAttach(r);
+    else showFile($('pPreview'), r['DriveファイルID']);
   });
+}
+
+/* PDFが付いていない行に、あとからPDFを付ける */
+function showAttach(r) {
+  var url = ((r['備考'] || '').match(/https?:\/\/[^\s<>"]+/) || [''])[0];
+  $('pPreview').innerHTML = '<div class="nopdf attach" id="attachDrop">' +
+    '<p style="margin:0 0 8px"><b>この請求書にはPDFがありません</b></p>' +
+    '<p style="margin:0 0 16px;font-size:13px">メールのリンクから請求書をダウンロードして、ここにドラッグするか「PDFを追加」を押して選んでください。<br>読み取った内容は、空欄の項目にだけ入ります。</p>' +
+    (url ? '<p style="margin:0 0 16px;font-size:13px"><a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">メールにあったリンクを開く</a></p>' : '') +
+    '<input type="file" id="attachFile" accept="application/pdf,image/*" hidden>' +
+    '<button class="purple" id="btnAttach">PDFを追加</button></div>';
+  var drop = $('attachDrop');
+  ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function (e) { if (e.dataTransfer.files[0]) attachFile(r.ID, e.dataTransfer.files[0]); });
+  $('btnAttach').onclick = function () { $('attachFile').click(); };
+  $('attachFile').onchange = function () { if (this.files[0]) attachFile(r.ID, this.files[0]); this.value = ''; };
+}
+function attachFile(id, f) {
+  if (f.size > 20 * 1024 * 1024) { toast(f.name + ' は大きすぎます（20MBまで）', true); return; }
+  $('pPreview').innerHTML = '<div class="nopdf">PDFを保存して読み取っています…（少し時間がかかります）</div>';
+  readB64(f).then(function (b64) {
+    return callC('api_attachFile', id, { name: f.name, mimeType: f.type || 'application/pdf', base64: b64 });
+  }).then(function () {
+    toast('PDFを追加しました');
+    loadInbox();
+    openPanel(id);
+  }, function () { openPanel(id); });
 }
 function closePanel() { $('overlay').classList.remove('show'); $('panel').classList.remove('show'); $('pPreview').innerHTML = ''; S.cur = null; }
 $('btnClose').onclick = closePanel; $('overlay').onclick = closePanel;
