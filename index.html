@@ -365,7 +365,7 @@ body.viewer .edit-only{display:none !important}
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 var PAY_STATUSES = ['未払い', '振込依頼中', '振込確認済', '口座振替確認済'];
-var S = { openCards: {}, token: '', me: null, clients: [], clientId: '', boot: null, view: 'inbox', inbox: [], filter: 'all', month: null, cur: null, master: [], users: [], adminClients: [], editUser: null, companies: null };
+var S = { cache: {}, openCards: {}, token: '', me: null, clients: [], clientId: '', boot: null, view: 'inbox', inbox: [], filter: 'all', month: null, cur: null, master: [], users: [], adminClients: [], editUser: null, companies: null };
 
 /* ---------- 共通 ---------- */
 function $(id) { return document.getElementById(id); }
@@ -413,7 +413,22 @@ function run(fn, args, quiet) {
 /** ログイン中の操作（token を付ける） */
 function callT(fn) { return run(fn, [S.token].concat([].slice.call(arguments, 1))); }
 /** 会社の操作（入口ページ経由で、選んでいる会社の受信箱に取り次ぐ） */
-function callC(fn) { return run('api_call', [S.token, S.clientId, fn.replace(/^api_/, ''), [].slice.call(arguments, 1)]); }
+var READ_FNS = ['bootstrap', 'listInbox', 'getInbox', 'getFile', 'listMonth', 'listMaster', 'exportTransfer'];
+function callC(fn) {
+  var name = fn.replace(/^api_/, ''), cid = S.clientId;
+  return run('api_call', [S.token, cid, name, [].slice.call(arguments, 1)]).then(function (v) {
+    if (READ_FNS.indexOf(name) < 0) cacheClear(cid); // 変更したら、その会社のおぼえた一覧は捨てる
+    return v;
+  });
+}
+
+/* ---------- 一度読んだ一覧をおぼえておく（タブの行き来をすぐ表示するため） ---------- */
+var FRESH_MS = 5000; // これより新しければ読み直さない
+function ck(kind, cid) { return (cid || S.clientId) + '|' + kind; }
+function cacheGet(kind) { return S.cache[ck(kind)]; }
+function cacheSet(kind, data, cid) { S.cache[ck(kind, cid)] = { data: data, at: Date.now() }; }
+function cacheClear(cid) { Object.keys(S.cache).forEach(function (k) { if (k.indexOf(cid + '|') === 0) delete S.cache[k]; }); }
+function isFresh(c) { return c && Date.now() - c.at < FRESH_MS; }
 
 /* ---------- ログイン ---------- */
 function showOnly(id) { ['loginView', 'pwView', 'appView'].forEach(function (v) { $(v).hidden = v !== id; }); }
@@ -469,25 +484,32 @@ function onSession(s) {
 $('clientSel').onchange = function () { selectClient(this.value, S.view === 'admin' ? 'inbox' : S.view); };
 
 function selectClient(id, view) {
+  view = view || 'inbox';
   S.clientId = id; store('ipc', id); S.month = null; S.filter = 'all'; updateAlert(null);
-  return callC('api_bootstrap').then(function (b) {
+  var dataView = view === 'admin' ? null : view;
+  if (dataView && cacheGet(dataView === 'monthly' ? 'month|cur' : dataView)) show(view, { noFetch: true }); // おぼえていれば先に出す
+  return callC('api_bootstrap', dataView, null).then(function (b) {
+    if (S.clientId !== id) return;
     S.boot = b;
     $('lastImport').textContent = b.lastImport ? '最終取込 ' + b.lastImport : '';
     $('payeeList').innerHTML = b.payees.map(function (p) { return '<option value="' + esc(p) + '">'; }).join('');
     updateAlert(b.needCheck);
-    show(view || 'inbox');
+    if (b.inbox) cacheSet('inbox', b.inbox, id);
+    if (b.month) { cacheSet('month|cur', b.month, id); cacheSet('month|' + b.month.ym, b.month, id); }
+    if (b.master) cacheSet('master', b.master, id);
+    show(view, { noFetch: true });
   });
 }
 
 /* ---------- 画面切替 ---------- */
 document.querySelectorAll('#nav button').forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.view); }); });
-function show(view) {
+function show(view, opts) {
   S.view = view;
   document.querySelectorAll('#nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.view === view); });
   ['inbox', 'monthly', 'master', 'admin'].forEach(function (v) { $('v-' + v).hidden = v !== view; });
-  if (view === 'inbox') loadInbox();
-  if (view === 'monthly') loadMonth(S.month);
-  if (view === 'master') loadMaster();
+  if (view === 'inbox') loadInbox(opts);
+  if (view === 'monthly') loadMonth(S.month, opts);
+  if (view === 'master') loadMaster(opts);
   if (view === 'admin') loadAdmin();
 }
 function canEdit() { return S.me && S.me.role !== 'viewer'; }
@@ -502,7 +524,18 @@ var FILTERS = [
   { k: 'manual', name: '手動追加', f: function (r) { return r['取込'] === '手動' && r['状態'] !== '除外'; } },
   { k: 'ex', name: '対象外', f: function (r) { return r['状態'] === '除外'; } },
 ];
-function loadInbox() { return callC('api_listInbox').then(function (rows) { S.inbox = rows; renderInbox(); updateAlert(countNeedCheck(rows)); }); }
+function loadInbox(opts) {
+  opts = opts || {};
+  var cid = S.clientId, c = cacheGet('inbox');
+  function apply(rows) { S.inbox = rows; renderInbox(); updateAlert(countNeedCheck(rows)); }
+  if (c) apply(c.data);
+  if (opts.noFetch && c) return Promise.resolve();
+  if (isFresh(c)) return Promise.resolve();
+  return callC('api_listInbox').then(function (rows) {
+    cacheSet('inbox', rows, cid);
+    if (S.clientId === cid && S.view === 'inbox') apply(rows);
+  });
+}
 
 /* ---------- 確認が必要な請求書のお知らせ（画面上部） ---------- */
 function countNeedCheck(rows) {
@@ -725,8 +758,18 @@ closePanel = function () { $('panel').querySelector('.pf').hidden = false; $('pa
 $('btnClose').onclick = closePanel; $('overlay').onclick = closePanel;
 
 /* ---------- 月次ビュー ---------- */
-function loadMonth(ym) {
+function loadMonth(ym, opts) {
+  opts = opts || {};
+  var cid = S.clientId, key = 'month|' + (ym || 'cur'), c = cacheGet(key);
+  if (c) renderMonth(c.data);
+  if ((opts.noFetch && c) || isFresh(c)) return Promise.resolve();
   return callC('api_listMonth', ym || null).then(function (d) {
+    cacheSet(key, d, cid); cacheSet('month|' + d.ym, d, cid);
+    if (S.clientId === cid && S.view === 'monthly') renderMonth(d);
+  });
+}
+function renderMonth(d) {
+  {
     S.month = d.ym;
     $('monthSel').innerHTML = d.months.map(function (m) { return '<option value="' + m + '"' + (m === d.ym ? ' selected' : '') + '>' + ymLabel(m) + '</option>'; }).join('');
     $('stTotal').textContent = '¥' + yen(d.total);
@@ -771,7 +814,7 @@ function loadMonth(ym) {
     $('monthBody').querySelectorAll('[data-file]').forEach(function (b) {
       b.onclick = function () { openFileOnly(b.dataset.file, b.dataset.title + ' の請求書'); };
     });
-  });
+  }
 }
 $('monthSel').onchange = function () { loadMonth(this.value); };
 $('btnFreeeMonth').onclick = function () {
@@ -806,7 +849,17 @@ $('btnManualAdd').onclick = function () {
 
 /* ---------- 支払先マスタ ---------- */
 var MCOLS = ['支払先', '照合キーワード', '費用項目', '振込先', '既定の支払日', 'メモ'];
-function loadMaster() { return callC('api_listMaster').then(function (rows) { S.master = rows; renderMaster(); }); }
+function loadMaster(opts) {
+  opts = opts || {};
+  var cid = S.clientId, c = cacheGet('master');
+  // 編集中の内容を消さないよう、おぼえた内容は「まだ何も表示していないとき」だけ使う
+  if (c) { S.master = JSON.parse(JSON.stringify(c.data)); renderMaster(); }
+  if ((opts.noFetch && c) || isFresh(c)) return Promise.resolve();
+  return callC('api_listMaster').then(function (rows) {
+    cacheSet('master', rows, cid);
+    if (S.clientId === cid && S.view === 'master') { S.master = JSON.parse(JSON.stringify(rows)); renderMaster(); }
+  });
+}
 function renderMaster() {
   if (!S.master.length && canEdit()) S.master.push({});
   if (!S.master.length) { $('masterBody').innerHTML = '<tr><td colspan="7" class="empty">まだ登録がありません</td></tr>'; return; }
