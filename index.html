@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>請求書管理</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#F1F4F8; --card:#FFFFFF; --ink:#1B2430; --muted:#5B6675; --line:#C9D0DB; --line2:#E3E7ED;
+  --primary:#1F5FBF; --primary-soft:#E6EEFB; --purple:#5A2E91; --purple-soft:#F3ECFA;
+  --ok:#15803D; --ok-soft:#DCFCE7; --warn:#9A4A06; --warn-soft:#FEF3C7; --ng:#B91C1C; --ng-soft:#FEE2E2;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans JP',sans-serif;font-size:14px;line-height:1.6}
+a{color:var(--primary)}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;min-height:38px}
+button.primary{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
+button.purple{background:var(--purple);border-color:var(--purple);color:#fff}
+button.small{padding:4px 10px;min-height:30px;font-size:13px}
+button:disabled{opacity:.5;cursor:default}
+input,select,textarea{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;width:100%}
+input:disabled,textarea:disabled,select:disabled{background:#F7F8FA;color:var(--ink)}
+textarea{min-height:70px;resize:vertical}
+label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:4px}
+code{background:var(--bg);padding:1px 6px;border-radius:4px}
+/* ログイン */
+.auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.auth .box{background:#fff;border:1px solid var(--line2);border-radius:16px;padding:32px;width:min(400px,100%)}
+.auth h1{font-size:22px;margin:0 0 4px}
+.auth .err{color:var(--ng);font-size:13px;min-height:20px;margin:8px 0}
+/* ヘッダー */
+header{background:#fff;border-bottom:1px solid var(--line2);position:sticky;top:0;z-index:5}
+.bar{max-width:1440px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;min-height:56px}
+.brand{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+.brand select{width:auto;font-weight:700;padding:4px 8px}
+nav{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+nav button{border:none;background:none;color:var(--muted);font-weight:500;border-radius:0;border-bottom:3px solid transparent;min-height:56px}
+nav button.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
+.who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.role{display:inline-block;border-radius:999px;padding:0 8px;font-size:12px;font-weight:700;background:var(--primary-soft);color:var(--primary)}
+main{max-width:1440px;margin:0 auto;padding:24px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 16px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line2);border-radius:12px;padding:16px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{border-radius:999px;min-height:34px;padding:4px 14px;font-size:13px}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.drop{background:var(--purple-soft);border:2px dashed var(--purple);border-radius:12px;padding:16px;margin-bottom:16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.drop.over{background:#E9DDF7}
+.drop .txt{flex:1;min-width:240px}
+.drop b{color:var(--purple)}
+.tablewrap{overflow-x:auto;background:#fff;border:1px solid var(--line2);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:900px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line2);text-align:left;white-space:nowrap;vertical-align:middle}
+th{font-size:12px;color:var(--muted);background:#FAFBFC;font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#F7F9FC}
+td.wrap{white-space:normal;min-width:160px}
+.badge{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+.s-未確認,.s-未送信{background:var(--primary-soft);color:var(--primary)}
+.s-要修正,.s-未払い{background:var(--warn-soft);color:var(--warn)}
+.s-読取失敗,.s-エラー{background:var(--ng-soft);color:var(--ng)}
+.s-反映済,.s-支払済,.s-送信済{background:var(--ok-soft);color:var(--ok)}
+.s-除外,.s-対象外{background:#EEF0F3;color:var(--muted)}
+.src{font-size:12px;color:var(--muted)}
+.src.manual{color:var(--purple);font-weight:700}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:16px}
+.stat .k{color:var(--muted);font-size:13px;font-weight:700}
+.stat .v{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .n{color:var(--muted);font-size:13px}
+.note{background:var(--primary-soft);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.field{margin-bottom:12px}
+.low{display:inline-block;margin-left:6px;font-size:11px;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:0 8px;font-weight:700}
+.overlay{position:fixed;inset:0;background:rgba(27,36,48,.35);z-index:20;display:none}
+.overlay.show{display:block}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(1100px,100%);background:#fff;z-index:21;display:none;flex-direction:column;box-shadow:-8px 0 24px rgba(0,0,0,.12)}
+.panel.show{display:flex}
+.panel .ph{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line2)}
+.panel .pb{flex:1;overflow:auto;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr)}
+.panel .pv{background:var(--bg);min-height:400px;overflow:auto;padding:12px}
+.panel .pv canvas,.panel .pv img{display:block;max-width:100%;margin:0 auto 12px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.panel .pv .nopdf{color:var(--muted);text-align:center;padding:48px 24px}
+.panel .pf{padding:20px;overflow:auto}
+.panel .pfoot{border-top:1px solid var(--line2);padding:12px 20px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.extra-row{display:grid;grid-template-columns:1fr 1fr 36px;gap:6px;margin-bottom:6px}
+details{margin-top:8px}
+details pre{white-space:pre-wrap;font-size:12px;background:var(--bg);padding:10px;border-radius:8px;max-height:240px;overflow:auto}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;z-index:50;display:none;max-width:90%}
+.toast.show{display:block}
+.toast.err{background:var(--ng)}
+.busy{position:fixed;top:0;left:0;right:0;height:3px;background:var(--primary);z-index:60;display:none;animation:pulse 1s infinite}
+.busy.show{display:block}
+@keyframes pulse{0%{opacity:.3}50%{opacity:1}100%{opacity:.3}}
+.section{margin-top:24px}
+.section h2{font-size:18px;margin:0 0 4px}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500}
+.check input{width:auto}
+.checks{display:flex;gap:12px;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.pwbox{background:var(--warn-soft);border-radius:10px;padding:12px 14px;margin-top:12px}
+.pwbox code{font-size:16px;background:#fff}
+body.viewer .edit-only{display:none !important}
+@media (max-width:820px){
+  .bar,main{padding-left:16px;padding-right:16px}
+  .panel .pb{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="busy" id="busy"></div>
+
+<!-- ログイン -->
+<div class="auth" id="loginView" hidden>
+  <form class="box" id="loginForm">
+    <h1>請求書管理</h1>
+    <p class="sub">発行されたIDとパスワードでログインしてください。</p>
+    <div class="field"><label for="lId">ID</label><input id="lId" autocomplete="username" required></div>
+    <div class="field"><label for="lPw">パスワード</label><input id="lPw" type="password" autocomplete="current-password" required></div>
+    <div class="err" id="lErr" role="alert"></div>
+    <button class="primary" style="width:100%">ログイン</button>
+  </form>
+</div>
+
+<!-- パスワード変更 -->
+<div class="auth" id="pwView" hidden>
+  <form class="box" id="pwForm">
+    <h1>パスワードの変更</h1>
+    <p class="sub" id="pwLead">新しいパスワードを決めてください（10文字以上・英字と数字を両方入れる）。</p>
+    <div class="field"><label for="pOld">今のパスワード（仮パスワード）</label><input id="pOld" type="password" autocomplete="current-password" required></div>
+    <div class="field"><label for="pNew">新しいパスワード</label><input id="pNew" type="password" autocomplete="new-password" required></div>
+    <div class="field"><label for="pNew2">新しいパスワード（確認）</label><input id="pNew2" type="password" autocomplete="new-password" required></div>
+    <div class="err" id="pErr" role="alert"></div>
+    <div class="actions"><button type="button" id="pCancel">戻る</button><button class="primary">変更する</button></div>
+  </form>
+</div>
+
+<div id="appView" hidden>
+<header>
+  <div class="bar">
+    <div class="brand"><span>請求書管理</span><select id="clientSel" aria-label="クライアント"></select><span id="clientName"></span></div>
+    <nav id="nav">
+      <button data-view="inbox">取込一覧</button>
+      <button data-view="monthly">月次ビュー</button>
+      <button data-view="master">支払先マスタ</button>
+      <button data-view="admin" id="navAdmin" hidden>管理</button>
+    </nav>
+    <div class="who"><span id="whoName"></span><span class="role" id="whoRole"></span>
+      <button class="small" id="btnPw">パスワード変更</button><button class="small" id="btnLogout">ログアウト</button></div>
+  </div>
+</header>
+
+<main>
+  <!-- 取込一覧 -->
+  <section id="v-inbox" hidden>
+    <div class="head">
+      <div>
+        <h1>取込一覧</h1>
+        <p class="sub">請求書メールから自動で読み込んだ内容です。確認してから月次へ反映します。</p>
+      </div>
+      <div class="actions edit-only">
+        <span class="muted" id="lastImport"></span>
+        <button class="primary" id="btnImport">今すぐ取り込む</button>
+        <button id="btnManualTop">手動で追加</button>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="drop edit-only" id="drop">
+      <div class="txt">
+        <b>メールのリンク（URL）しか無い請求書は、PDFをここに入れる</b><br>
+        <span class="muted">ダウンロードしたPDF・画像をドラッグするか、ファイルを選びます。読み取り後は同じ一覧に並び、Driveにも自動保存されます。</span>
+      </div>
+      <div class="actions">
+        <input type="file" id="file" accept="application/pdf,image/*" multiple hidden>
+        <button class="purple" id="btnFile">ファイルを選ぶ</button>
+        <button id="btnUrl">URLを貼って登録</button>
+      </div>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>受信日</th><th>支払先</th><th>件名</th><th class="num">金額</th><th>支払期限</th><th>対象月</th><th>取込</th><th>状態</th><th>操作</th></tr></thead>
+      <tbody id="inboxBody"></tbody>
+    </table></div>
+  </section>
+
+  <!-- 月次ビュー -->
+  <section id="v-monthly" hidden>
+    <div class="head">
+      <div>
+        <h1>月次ビュー</h1>
+        <p class="sub">支払予定日の月ごとの支払一覧です。</p>
+      </div>
+      <div class="actions">
+        <select id="monthSel" aria-label="表示する月" style="width:auto"></select>
+        <button class="primary edit-only" id="btnFreeeMonth">freeeへ送信</button>
+        <button id="btnCsv">振込データを出力</button>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="card stat"><div class="k">今月の支払合計</div><div class="v" id="stTotal">—</div><div class="n" id="stTotalN"></div></div>
+      <div class="card stat"><div class="k">支払い残</div><div class="v" id="stUnpaid">—</div><div class="n" id="stUnpaidN"></div></div>
+      <div class="card stat"><div class="k">支払済</div><div class="v" id="stPaid">—</div><div class="n" id="stPaidN"></div></div>
+    </div>
+    <div class="note edit-only" id="syncNote"></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>支払予定日</th><th>支払先</th><th>区分</th><th>費用項目</th><th>振込先</th><th class="num">金額</th><th>状態</th><th>請求書</th><th class="edit-only">freee</th></tr></thead>
+      <tbody id="monthBody"></tbody>
+    </table></div>
+
+    <div class="section card edit-only" id="manualForm">
+      <h2>支払を手動で追加</h2>
+      <p class="sub">請求書が無い支払（給与・税金・社保・役員報酬など）はここから入力します。追加するとシートにも書き込まれます。</p>
+      <div class="grid2">
+        <div class="field"><label for="mKind">区分</label>
+          <select id="mKind"><option>税金・社保</option><option>給与</option><option>役員報酬</option><option>その他</option></select></div>
+        <div class="field"><label for="mPayee">支払先</label><input id="mPayee" list="payeeList"></div>
+        <div class="field"><label for="mCat">費用項目</label><input id="mCat" placeholder="例：社会保険料"></div>
+        <div class="field"><label for="mAmount">金額</label><input id="mAmount" inputmode="numeric" placeholder="例：250000"></div>
+        <div class="field"><label for="mDate">支払予定日</label><input id="mDate" type="date"></div>
+        <div class="field"><label for="mMonth">対象月</label><input id="mMonth" type="month"></div>
+        <div class="field"><label for="mBank">振込先</label><input id="mBank" placeholder="例：Payeasy／◯◯銀行 ◯◯支店 普通"></div>
+        <div class="field"><label for="mNote">備考</label><input id="mNote"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="mRecur"> 毎月同じ内容で自動登録する（家賃・社保・役員報酬など）</label>
+      <div class="actions" style="margin-top:12px">
+        <button id="btnManualReset">キャンセル</button>
+        <button class="primary" id="btnManualAdd">追加してシートに反映</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 支払先マスタ -->
+  <section id="v-master" hidden>
+    <div class="head">
+      <div>
+        <h1>支払先マスタ</h1>
+        <p class="sub">照合キーワード（送信元メールアドレス・ドメイン・社名など。カンマ区切り）に当てはまる請求書は、支払先・費用項目・振込先を自動で入れます。</p>
+      </div>
+      <div class="actions edit-only">
+        <button id="btnMasterAdd">行を追加</button>
+        <button class="primary" id="btnMasterSave">保存</button>
+      </div>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>支払先</th><th>照合キーワード</th><th>費用項目</th><th>振込先</th><th>既定の支払日</th><th>メモ</th><th class="edit-only"></th></tr></thead>
+      <tbody id="masterBody"></tbody>
+    </table></div>
+    <p class="muted">既定の支払日：請求書に期限が書かれていないときに使います（例：25、末）。</p>
+  </section>
+
+  <!-- 管理（管理者のみ） -->
+  <section id="v-admin" hidden>
+    <h1>管理</h1>
+    <p class="sub">クライアント・ログインできる人・freee連携の設定です。管理者だけが見られます。</p>
+
+    <div class="card section">
+      <h2>ユーザー</h2>
+      <p class="sub">管理者：全クライアントの編集とこの画面／担当者：割り当てたクライアントの編集／閲覧：割り当てたクライアントを見るだけ</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>ID</th><th>名前</th><th>権限</th><th>見られるクライアント</th><th>状態</th><th>最終ログイン</th><th>操作</th></tr></thead>
+        <tbody id="userBody"></tbody>
+      </table></div>
+      <div class="section" id="userForm">
+        <h2 id="ufTitle">ユーザーを追加</h2>
+        <div class="grid2">
+          <div class="field"><label for="uId">ID（ログインに使う）</label><input id="uId" placeholder="例：companya-ceo"></div>
+          <div class="field"><label for="uName">名前</label><input id="uName" placeholder="例：A社 代表"></div>
+          <div class="field"><label for="uRole">権限</label>
+            <select id="uRole"><option value="viewer">閲覧</option><option value="editor">担当者</option><option value="admin">管理者</option></select></div>
+        </div>
+        <div class="field" id="uClientsWrap"><label>見られるクライアント</label><div class="checks" id="uClients"></div></div>
+        <label class="check" id="uActiveWrap" hidden><input type="checkbox" id="uActive" checked> 有効（外すとログインできなくなります）</label>
+        <div class="actions" style="margin-top:12px"><button id="btnUserCancel">クリア</button><button class="primary" id="btnUserSave">追加して仮パスワードを発行</button></div>
+        <div class="pwbox" id="pwResult" hidden></div>
+      </div>
+    </div>
+
+    <div class="card section">
+      <h2>会社（各社の部品）</h2>
+      <p class="sub">各社の Google アカウントに置いた部品を登録します。Gmail・Drive・シート・freee 連携は、それぞれの会社のアカウントの中だけで動きます。</p>
+      <div id="clientCards"></div>
+      <div class="section">
+        <h2>会社を登録</h2>
+        <p class="sub">部品の <code>setup</code> を実行したときの実行ログに出る「合言葉」と、部品をデプロイしたときの URL（…/exec）を入れます。登録時に接続を確かめます。</p>
+        <div class="grid2">
+          <div class="field"><label for="ncId">クライアントID（半角英小文字）</label><input id="ncId" placeholder="例：companya"></div>
+          <div class="field"><label for="ncName">表示名</label><input id="ncName" placeholder="例：A社"></div>
+        </div>
+        <div class="field"><label for="ncUrl">部品のURL</label><input id="ncUrl" placeholder="https://script.google.com/macros/s/…/exec"></div>
+        <div class="field"><label for="ncSecret">合言葉</label><input id="ncSecret" type="password" autocomplete="off"></div>
+        <button class="primary" id="btnClientAdd">接続を確かめて登録</button>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+
+<datalist id="payeeList"></datalist>
+
+<!-- 確認・修正パネル -->
+<div class="overlay" id="overlay"></div>
+<aside class="panel" id="panel" aria-label="請求書の詳細">
+  <div class="ph">
+    <div><b id="pTitle"></b> <span id="pBadge"></span></div>
+    <button class="small" id="btnClose">閉じる</button>
+  </div>
+  <div class="pb">
+    <div class="pv" id="pPreview"></div>
+    <div class="pf">
+      <div class="field"><label for="fPayee">支払先 <span id="lPayee"></span></label><input id="fPayee" list="payeeList"></div>
+      <div class="grid2">
+        <div class="field"><label for="fAmount">金額 <span id="lAmount"></span></label><input id="fAmount" inputmode="numeric"></div>
+        <div class="field"><label for="fDue">支払期限 <span id="lDue"></span></label><input id="fDue" type="date"></div>
+        <div class="field"><label for="fMonth">対象月 <span id="lMonth"></span></label><input id="fMonth" type="month"></div>
+        <div class="field"><label for="fIssue">発行日</label><input id="fIssue" type="date"></div>
+      </div>
+      <div class="field"><label for="fCat">費用項目</label><input id="fCat" placeholder="例：外注費、顧問料"></div>
+      <div class="field"><label for="fBank">振込先</label><input id="fBank"></div>
+      <div class="field"><label for="fNo">管理番号</label><input id="fNo"></div>
+      <div class="field"><label for="fNote">備考</label><textarea id="fNote"></textarea></div>
+      <div class="field"><label>追加項目</label>
+        <div id="extras"></div>
+        <button class="small edit-only" id="btnAddExtra">＋ 項目を追加（例：源泉徴収額・プロジェクト名）</button>
+      </div>
+      <label class="check edit-only"><input type="checkbox" id="fFreee"> 月次に反映するとき、請求書PDFをfreeeのファイルボックスにも送る</label>
+      <details class="edit-only"><summary class="muted">読み取った文字（OCR）を見る</summary><pre id="pOcr"></pre></details>
+    </div>
+  </div>
+  <div class="pfoot edit-only">
+    <button class="primary" id="btnReflect">保存して月次に反映</button>
+    <button id="btnSaveOnly">保存のみ</button>
+    <span style="flex:1"></span>
+    <button id="btnExclude">請求書ではない（対象外にする）</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+var S = { token: '', me: null, clients: [], clientId: '', boot: null, view: 'inbox', inbox: [], filter: 'all', month: null, cur: null, master: [], users: [], adminClients: [], editUser: null, companies: null };
+
+/* ---------- 共通 ---------- */
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function yen(n) { return (n === '' || n == null) ? '—' : Number(n).toLocaleString('ja-JP'); }
+function ymLabel(ym) { if (!ym) return '—'; var p = ym.split('-'); return p[0].slice(2) + '年' + Number(p[1]) + '月分'; }
+function mdLabel(d) { if (!d) return '—'; var p = d.split('/'); return Number(p[1]) + '/' + Number(p[2]); }
+function toInputDate(d) { return d ? d.replace(/\//g, '-') : ''; }
+function badge(s) { return '<span class="badge s-' + esc(s) + '">' + esc(s) + '</span>'; }
+function store(k, v) { try { if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return sessionStorage.getItem(k) || ''; } catch (e) { return ''; } }
+var busyN = 0;
+function busy(on) { busyN = Math.max(0, busyN + (on ? 1 : -1)); $('busy').classList.toggle('show', busyN > 0); }
+function toast(msg, err) {
+  var t = $('toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(toast._t); toast._t = setTimeout(function () { t.className = 'toast'; }, err ? 6000 : 3000);
+}
+function errMsg(e) { return String(e && e.message ? e.message : e).replace(/^Error:\s*/, '').replace(/^AUTH:\s*/, ''); }
+
+/** 処理を受け持つ GAS（入口）の URL。画面はここに POST で依頼を送る */
+var API_URL = 'https://script.google.com/macros/s/AKfycbxhKwo0Qr315fAdep5aM3xEm3T7CFL8acYlJNr1rtm-4CIWzZ37uhkEtua0JE67auo6/exec';
+
+function run(fn, args, quiet) {
+  busy(true);
+  return fetch(API_URL, {
+    method: 'POST', redirect: 'follow', credentials: 'omit',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn: fn, args: args || [] }),
+  }).then(function (r) { return r.json(); }, function () {
+    return { ok: false, error: 'サーバーに接続できませんでした。通信状況を確認して、もう一度お試しください。' };
+  }).catch(function () {
+    return { ok: false, error: 'サーバーから正しい応答がありませんでした。' };
+  }).then(function (body) {
+    busy(false);
+    if (body && body.ok) return body.result;
+    var e = new Error((body && body.error) || 'エラーが起きました');
+    var m = e.message;
+    if (m.indexOf('AUTH:') >= 0) {
+      if (m.indexOf('パスワードを変更') >= 0) { showPw(true); }
+      else { logoutLocal(); showLogin(errMsg(e)); }
+    } else if (!quiet) toast(errMsg(e), true);
+    throw e;
+  });
+}
+/** ログイン中の操作（token を付ける） */
+function callT(fn) { return run(fn, [S.token].concat([].slice.call(arguments, 1))); }
+/** 会社の操作（入口ページ経由で、選んでいる会社の部品に取り次ぐ） */
+function callC(fn) { return run('api_call', [S.token, S.clientId, fn.replace(/^api_/, ''), [].slice.call(arguments, 1)]); }
+
+/* ---------- ログイン ---------- */
+function showOnly(id) { ['loginView', 'pwView', 'appView'].forEach(function (v) { $(v).hidden = v !== id; }); }
+function showLogin(msg) { showOnly('loginView'); $('lErr').textContent = msg || ''; $('lPw').value = ''; $('lId').focus(); }
+function showPw(forced) {
+  showOnly('pwView');
+  $('pwLead').textContent = forced ? '初回ログインです。仮パスワードから、自分で決めたパスワードに変更してください（10文字以上・英字と数字を両方入れる）。'
+    : '新しいパスワードを決めてください（10文字以上・英字と数字を両方入れる）。';
+  $('pCancel').hidden = !!forced;
+  ['pOld', 'pNew', 'pNew2'].forEach(function (id) { $(id).value = ''; }); $('pErr').textContent = '';
+}
+function logoutLocal() { S.token = ''; S.me = null; store('ipt', null); }
+
+$('loginForm').onsubmit = function (e) {
+  e.preventDefault();
+  $('lErr').textContent = '';
+  run('api_login', [$('lId').value, $('lPw').value], true).then(onSession, function (err) { $('lErr').textContent = errMsg(err); $('lPw').value = ''; });
+};
+$('pwForm').onsubmit = function (e) {
+  e.preventDefault();
+  if ($('pNew').value !== $('pNew2').value) { $('pErr').textContent = '確認用のパスワードが一致しません'; return; }
+  run('api_changePassword', [S.token, $('pOld').value, $('pNew').value], true).then(function (s) {
+    toast('パスワードを変更しました'); onSession(s);
+  }, function (err) { $('pErr').textContent = errMsg(err); });
+};
+$('pCancel').onclick = function () { showOnly('appView'); };
+$('btnPw').onclick = function () { showPw(false); };
+$('btnLogout').onclick = function () {
+  var t = S.token; logoutLocal(); run('api_logout', [t], true).catch(function () {}); showLogin('ログアウトしました');
+};
+
+function onSession(s) {
+  S.token = s.token; S.me = s.me; S.clients = s.clients; store('ipt', s.token);
+  if (s.me.mustChange) { showPw(true); return; }
+  showOnly('appView');
+  $('whoName').textContent = s.me.name; $('whoRole').textContent = s.me.roleName;
+  $('navAdmin').hidden = s.me.role !== 'admin';
+  document.body.classList.toggle('viewer', s.me.role === 'viewer');
+  if (!S.clients.length) {
+    $('clientSel').hidden = true; $('clientName').textContent = '';
+    if (s.me.role === 'admin') { show('admin'); toast('まず「管理」から会社の部品を登録してください'); }
+    else { showLogin('見られるクライアントが割り当てられていません。管理者に連絡してください。'); }
+    return;
+  }
+  var saved = load('ipc');
+  S.clientId = S.clients.some(function (c) { return c.id === saved; }) ? saved : S.clients[0].id;
+  $('clientSel').innerHTML = S.clients.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>'; }).join('');
+  $('clientSel').value = S.clientId;
+  $('clientSel').hidden = S.clients.length < 2;
+  $('clientName').textContent = S.clients.length < 2 ? S.clients[0].name : '';
+  selectClient(S.clientId, s.me.role === 'viewer' ? 'monthly' : 'inbox');
+}
+$('clientSel').onchange = function () { selectClient(this.value, S.view === 'admin' ? 'inbox' : S.view); };
+
+function selectClient(id, view) {
+  S.clientId = id; store('ipc', id); S.month = null; S.filter = 'all';
+  return callC('api_bootstrap').then(function (b) {
+    S.boot = b;
+    $('lastImport').textContent = b.lastImport ? '最終取込 ' + b.lastImport : '';
+    $('payeeList').innerHTML = b.payees.map(function (p) { return '<option value="' + esc(p) + '">'; }).join('');
+    show(view || 'inbox');
+  });
+}
+
+/* ---------- 画面切替 ---------- */
+document.querySelectorAll('#nav button').forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.view); }); });
+function show(view) {
+  S.view = view;
+  document.querySelectorAll('#nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.view === view); });
+  ['inbox', 'monthly', 'master', 'admin'].forEach(function (v) { $('v-' + v).hidden = v !== view; });
+  if (view === 'inbox') loadInbox();
+  if (view === 'monthly') loadMonth(S.month);
+  if (view === 'master') loadMaster();
+  if (view === 'admin') loadAdmin();
+}
+function canEdit() { return S.me && S.me.role !== 'viewer'; }
+
+/* ---------- 取込一覧 ---------- */
+var FILTERS = [
+  { k: 'all', name: 'すべて', f: function (r) { return r['状態'] !== '除外'; } },
+  { k: 'new', name: '未確認', f: function (r) { return r['状態'] === '未確認'; } },
+  { k: 'fix', name: '要修正・読取失敗', f: function (r) { return r['状態'] === '要修正' || r['状態'] === '読取失敗'; } },
+  { k: 'done', name: '反映済', f: function (r) { return r['状態'] === '反映済'; } },
+  { k: 'manual', name: '手動追加', f: function (r) { return r['取込'] === '手動' && r['状態'] !== '除外'; } },
+  { k: 'ex', name: '対象外', f: function (r) { return r['状態'] === '除外'; } },
+];
+function loadInbox() { return callC('api_listInbox').then(function (rows) { S.inbox = rows; renderInbox(); }); }
+function renderInbox() {
+  $('chips').innerHTML = FILTERS.map(function (f) {
+    var n = S.inbox.filter(f.f).length;
+    return '<button class="chip' + (S.filter === f.k ? ' on' : '') + '" data-k="' + f.k + '">' + f.name + (f.k === 'all' ? '' : ' ' + n) + '</button>';
+  }).join('');
+  $('chips').querySelectorAll('button').forEach(function (b) { b.onclick = function () { S.filter = b.dataset.k; renderInbox(); }; });
+  var flt = FILTERS.filter(function (f) { return f.k === S.filter; })[0];
+  var rows = S.inbox.filter(flt.f);
+  if (!rows.length) { $('inboxBody').innerHTML = '<tr><td colspan="9" class="empty">該当する請求書はありません</td></tr>'; return; }
+  $('inboxBody').innerHTML = rows.map(function (r) {
+    var label = !canEdit() ? '見る' : r['状態'] === '反映済' ? '月次を見る' : r['状態'] === '除外' ? '開く' : r['状態'] === '読取失敗' ? '手入力する' : '確認して反映';
+    var cls = canEdit() && r['状態'] !== '反映済' && r['状態'] !== '除外' ? 'small primary' : 'small';
+    var act = canEdit() && r['状態'] === '反映済' ? 'month' : 'open';
+    return '<tr class="click" data-id="' + esc(r.ID) + '">' +
+      '<td>' + mdLabel(r['受信日']) + '</td>' +
+      '<td>' + (r['支払先'] ? esc(r['支払先']) : '<span class="muted">（読み取れませんでした）</span>') + '</td>' +
+      '<td class="wrap">' + esc(r['件名']) + '</td>' +
+      '<td class="num">' + yen(r['金額']) + '</td>' +
+      '<td>' + mdLabel(r['支払期限']) + '</td>' +
+      '<td>' + ymLabel(r['対象月']) + '</td>' +
+      '<td><span class="src' + (r['取込'] === '手動' ? ' manual' : '') + '">' + esc(r['取込']) + '</span></td>' +
+      '<td>' + badge(r['状態']) + '</td>' +
+      '<td><button class="' + cls + '" data-act="' + act + '" data-id="' + esc(r.ID) + '">' + label + '</button></td></tr>';
+  }).join('');
+  $('inboxBody').querySelectorAll('tr.click').forEach(function (tr) {
+    tr.onclick = function (e) {
+      var btn = e.target.closest('button');
+      if (btn && btn.dataset.act === 'month') {
+        var r = S.inbox.filter(function (x) { return x.ID === btn.dataset.id; })[0];
+        S.month = r && r['支払期限'] ? r['支払期限'].slice(0, 7).replace('/', '-') : null;
+        show('monthly'); return;
+      }
+      openPanel(tr.dataset.id);
+    };
+  });
+}
+$('btnImport').onclick = function () {
+  callC('api_importNow').then(function (r) {
+    toast(r.added ? r.added + '件取り込みました' : '新しい請求書メールはありませんでした');
+    return selectClient(S.clientId, 'inbox');
+  });
+};
+$('btnManualTop').onclick = function () { show('monthly'); setTimeout(function () { $('manualForm').scrollIntoView({ behavior: 'smooth' }); $('mPayee').focus(); }, 300); };
+
+$('btnFile').onclick = function () { $('file').click(); };
+$('file').onchange = function () { uploadFiles(this.files); this.value = ''; };
+var drop = $('drop');
+['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+drop.addEventListener('drop', function (e) { uploadFiles(e.dataTransfer.files); });
+function uploadFiles(files) {
+  var list = [].slice.call(files || []);
+  if (!list.length) return;
+  var chain = Promise.resolve(), n = 0;
+  list.forEach(function (f) {
+    chain = chain.then(function () {
+      if (f.size > 20 * 1024 * 1024) { toast(f.name + ' は大きすぎます（20MBまで）', true); return; }
+      return readB64(f).then(function (b64) {
+        return callC('api_uploadManual', { name: f.name, mimeType: f.type || 'application/pdf', base64: b64 }).then(function () { n++; });
+      });
+    });
+  });
+  chain.then(function () { if (n) toast(n + '件追加しました'); S.filter = 'manual'; loadInbox(); });
+}
+function readB64(file) {
+  return new Promise(function (res, rej) {
+    var fr = new FileReader();
+    fr.onload = function () { res(String(fr.result).split(',')[1]); };
+    fr.onerror = rej; fr.readAsDataURL(file);
+  });
+}
+$('btnUrl').onclick = function () {
+  var url = prompt('請求書のURLを貼り付けてください');
+  if (!url) return;
+  callC('api_registerUrl', url).then(function (r) {
+    toast(r['DriveファイルID'] ? 'PDFを取得して追加しました' : 'URLを登録しました（PDFは手動で追加してください）');
+    S.filter = 'manual'; loadInbox();
+  });
+};
+
+/* ---------- PDF表示（ページ内で表示：閲覧者は Drive に入れないため） ---------- */
+function showFile(container, fileId) {
+  if (!fileId) { container.innerHTML = '<div class="nopdf">PDFがありません</div>'; return; }
+  container.innerHTML = '<div class="nopdf">読み込み中…</div>';
+  callC('api_getFile', fileId).then(function (f) {
+    if (/^image\//.test(f.mimeType)) {
+      container.innerHTML = '<img alt="請求書の画像" src="data:' + esc(f.mimeType) + ';base64,' + f.base64 + '">';
+      return;
+    }
+    if (!window.pdfjsLib) { container.innerHTML = '<div class="nopdf">PDFを表示できませんでした</div>'; return; }
+    var raw = atob(f.base64), bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    pdfjsLib.getDocument({ data: bytes }).promise.then(function (pdf) {
+      container.innerHTML = '';
+      var width = Math.max(container.clientWidth - 24, 300);
+      var chain = Promise.resolve();
+      for (var p = 1; p <= Math.min(pdf.numPages, 10); p++) {
+        (function (n) {
+          chain = chain.then(function () {
+            return pdf.getPage(n).then(function (page) {
+              var vp1 = page.getViewport({ scale: 1 });
+              var scale = width / vp1.width * (window.devicePixelRatio || 1);
+              var vp = page.getViewport({ scale: scale });
+              var cv = document.createElement('canvas');
+              cv.width = vp.width; cv.height = vp.height; cv.style.width = width + 'px';
+              cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', '請求書 ' + n + 'ページ目');
+              container.appendChild(cv);
+              return page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+            });
+          });
+        })(p);
+      }
+    }).catch(function () { container.innerHTML = '<div class="nopdf">PDFを表示できませんでした</div>'; });
+  }).catch(function () { container.innerHTML = '<div class="nopdf">PDFを読み込めませんでした</div>'; });
+}
+
+/* ---------- 詳細・修正パネル ---------- */
+var PANEL_INPUTS = ['fPayee', 'fAmount', 'fDue', 'fMonth', 'fIssue', 'fCat', 'fBank', 'fNo', 'fNote'];
+function openPanel(id) {
+  callC('api_getInbox', id).then(function (r) {
+    S.cur = r;
+    $('pTitle').textContent = (r['支払先'] || '（支払先未入力）') + ' ／ ' + (r['件名'] || '');
+    $('pBadge').innerHTML = badge(r['状態']);
+    var flags = {}; try { flags = JSON.parse(r['読取メモ'] || '{}'); } catch (e) {}
+    function low(k) { var v = flags[k]; return canEdit() && (v === 'guess' || v === 'none' || v === 'default') ? '<span class="low">' + (v === 'default' ? '既定値' : 'OCR 信頼度 低') + '</span>' : ''; }
+    $('lPayee').innerHTML = low('payee'); $('lAmount').innerHTML = low('amount'); $('lDue').innerHTML = low('due');
+    $('lMonth').innerHTML = canEdit() && flags.month === 'default' ? '<span class="low">受信月の前月</span>' : '';
+    $('fPayee').value = r['支払先'] || ''; $('fAmount').value = r['金額'] === '' ? '' : r['金額'];
+    $('fDue').value = toInputDate(r['支払期限']); $('fMonth').value = r['対象月'] || ''; $('fIssue').value = toInputDate(r['発行日']);
+    $('fCat').value = r['費用項目'] || ''; $('fBank').value = r['振込先'] || ''; $('fNo').value = r['管理番号'] || ''; $('fNote').value = r['備考'] || '';
+    PANEL_INPUTS.forEach(function (id) { $(id).disabled = !canEdit(); });
+    var ex = []; try { ex = JSON.parse(r['追加項目'] || '[]'); } catch (e) {}
+    $('extras').innerHTML = ''; ex.forEach(function (x) { addExtra(x.k, x.v); });
+    if (!ex.length && !canEdit()) $('extras').innerHTML = '<span class="muted">なし</span>';
+    $('pOcr').textContent = r['OCR抜粋'] || '（文字を読み取れませんでした）';
+    var canFreee = !!r['DriveファイルID'];
+    $('fFreee').disabled = !canFreee; $('fFreee').checked = canFreee && S.boot && S.boot.freeeReady;
+    $('btnExclude').hidden = r['状態'] === '反映済';
+    $('overlay').classList.add('show'); $('panel').classList.add('show');
+    showFile($('pPreview'), r['DriveファイルID']);
+  });
+}
+function closePanel() { $('overlay').classList.remove('show'); $('panel').classList.remove('show'); $('pPreview').innerHTML = ''; S.cur = null; }
+$('btnClose').onclick = closePanel; $('overlay').onclick = closePanel;
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('panel').classList.contains('show')) closePanel(); });
+function addExtra(k, v) {
+  var d = document.createElement('div'); d.className = 'extra-row';
+  var dis = canEdit() ? '' : ' disabled';
+  d.innerHTML = '<input aria-label="項目名" placeholder="項目名" value="' + esc(k || '') + '"' + dis + '><input aria-label="内容" placeholder="内容" value="' + esc(v || '') + '"' + dis + '>' +
+    (canEdit() ? '<button class="small" aria-label="この項目を削除">×</button>' : '<span></span>');
+  var b = d.querySelector('button'); if (b) b.onclick = function () { d.remove(); };
+  $('extras').appendChild(d);
+}
+$('btnAddExtra').onclick = function () { addExtra('', ''); };
+function formData() {
+  var extras = [].map.call($('extras').querySelectorAll('.extra-row'), function (row) {
+    var i = row.querySelectorAll('input'); return { k: i[0].value.trim(), v: i[1].value.trim() };
+  }).filter(function (x) { return x.k || x.v; });
+  return { '支払先': $('fPayee').value, '金額': $('fAmount').value, '支払期限': $('fDue').value.replace(/-/g, '/'),
+    '対象月': $('fMonth').value, '発行日': $('fIssue').value.replace(/-/g, '/'), '費用項目': $('fCat').value,
+    '振込先': $('fBank').value, '管理番号': $('fNo').value, '備考': $('fNote').value, '追加項目': extras };
+}
+function save(reflect) {
+  if (!S.cur) return;
+  callC('api_saveInbox', S.cur.ID, formData(), { reflect: reflect, sendFreee: reflect && $('fFreee').checked }).then(function (r) {
+    closePanel();
+    toast(reflect ? '月次に反映しました' + (r.warnings.length ? '（' + r.warnings.join(' ') + '）' : '') : '保存しました', r.warnings.length > 0);
+    loadInbox();
+  });
+}
+$('btnReflect').onclick = function () { save(true); };
+$('btnSaveOnly').onclick = function () { save(false); };
+$('btnExclude').onclick = function () {
+  if (!S.cur || !confirm('この行を対象外にします（請求書以外の添付など）。よろしいですか？')) return;
+  callC('api_excludeInbox', S.cur.ID).then(function () { closePanel(); toast('対象外にしました'); loadInbox(); });
+};
+
+/* 月次ビューの「請求書を見る」用（パネルをPDFだけで使う） */
+function openFileOnly(fileId, title) {
+  S.cur = null;
+  $('pTitle').textContent = title; $('pBadge').innerHTML = '';
+  PANEL_INPUTS.forEach(function (id) { $(id).value = ''; $(id).disabled = true; });
+  $('panel').querySelector('.pf').hidden = true; $('panel').querySelector('.pfoot').hidden = true;
+  $('overlay').classList.add('show'); $('panel').classList.add('show');
+  showFile($('pPreview'), fileId);
+}
+var _close = closePanel;
+closePanel = function () { $('panel').querySelector('.pf').hidden = false; $('panel').querySelector('.pfoot').hidden = false; _close(); };
+$('btnClose').onclick = closePanel; $('overlay').onclick = closePanel;
+
+/* ---------- 月次ビュー ---------- */
+function loadMonth(ym) {
+  return callC('api_listMonth', ym || null).then(function (d) {
+    S.month = d.ym;
+    $('monthSel').innerHTML = d.months.map(function (m) { return '<option value="' + m + '"' + (m === d.ym ? ' selected' : '') + '>' + ymLabel(m) + '</option>'; }).join('');
+    $('stTotal').textContent = '¥' + yen(d.total);
+    $('stTotalN').textContent = d.counts.all + '件（請求書' + d.counts.invoice + '・手動' + d.counts.manual + '）';
+    $('stUnpaid').textContent = '¥' + yen(d.unpaid); $('stUnpaidN').textContent = '未払い ' + d.counts.unpaid + '件';
+    $('stPaid').textContent = '¥' + yen(d.paid); $('stPaidN').textContent = '済 ' + d.counts.paid + '件';
+    $('btnFreeeMonth').textContent = 'freeeへ送信（未送信 ' + d.counts.freeeUnsent + '件）';
+    $('btnFreeeMonth').disabled = !d.counts.freeeUnsent;
+    $('syncNote').innerHTML = '<b>経理管理シートと同期</b>　この画面での変更は、シートの「支払一覧」と月次シートにも書き込まれます。' +
+      (d.lastSync ? '最終反映 ' + esc(d.lastSync) : '') +
+      (S.boot && S.boot.spreadsheetUrl ? '　<a href="' + esc(S.boot.spreadsheetUrl) + '" target="_blank" rel="noopener">シートを開く</a>' : '') +
+      '<br><b>freeeファイルボックス：</b>請求書PDFを送ります。手動で足した行は対象外です。' + (S.boot && !S.boot.freeeReady ? '（このクライアントはまだ freee の事業所が設定されていません）' : '');
+    if (!d.rows.length) { $('monthBody').innerHTML = '<tr><td colspan="9" class="empty">この月の支払はまだありません</td></tr>'; return; }
+    $('monthBody').innerHTML = d.rows.map(function (p) {
+      var next = p['状態'] === '支払済' ? '未払い' : '支払済';
+      var status = canEdit() ? '<button class="small" data-pay="' + esc(p.ID) + '" data-next="' + next + '" title="クリックで「' + next + '」に変更">' + badge(p['状態']) + '</button>' : badge(p['状態']);
+      var freee = (p['freee状態'] === '未送信' || p['freee状態'] === 'エラー') ? badge(p['freee状態']) + ' <button class="small" data-send="' + esc(p.ID) + '">送信</button>' : badge(p['freee状態']);
+      return '<tr>' +
+        '<td>' + esc(p['支払予定日']) + '</td>' +
+        '<td>' + esc(p['支払先']) + '</td>' +
+        '<td>' + (p['区分'] === '手動' ? '<span class="src manual">手動</span>' : '請求書') + '</td>' +
+        '<td>' + esc(p['費用項目'] || '—') + '</td>' +
+        '<td class="wrap">' + esc(p['振込先'] || '—') + '</td>' +
+        '<td class="num">¥' + yen(p['金額']) + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td>' + (p['DriveファイルID'] ? '<button class="small" data-file="' + esc(p['DriveファイルID']) + '" data-title="' + esc(p['支払先']) + '">見る</button>' : '—') + '</td>' +
+        '<td class="edit-only">' + freee + '</td></tr>';
+    }).join('');
+    $('monthBody').querySelectorAll('[data-pay]').forEach(function (b) {
+      b.onclick = function () { callC('api_setPayStatus', b.dataset.pay, b.dataset.next).then(function () { loadMonth(S.month); }); };
+    });
+    $('monthBody').querySelectorAll('[data-send]').forEach(function (b) {
+      b.onclick = function () { callC('api_sendFreeeOne', b.dataset.send).then(function (r) { toast(r.ok ? 'freeeへ送信しました' : r.message, !r.ok); loadMonth(S.month); }); };
+    });
+    $('monthBody').querySelectorAll('[data-file]').forEach(function (b) {
+      b.onclick = function () { openFileOnly(b.dataset.file, b.dataset.title + ' の請求書'); };
+    });
+  });
+}
+$('monthSel').onchange = function () { loadMonth(this.value); };
+$('btnFreeeMonth').onclick = function () {
+  if (!confirm(ymLabel(S.month) + 'の未送信の請求書PDFを freee ファイルボックスへ送ります。よろしいですか？')) return;
+  callC('api_sendFreeeMonth', S.month).then(function (r) {
+    toast(r.sent + '件送信しました' + (r.errors.length ? '／失敗 ' + r.errors.length + '件：' + r.errors[0] : ''), r.errors.length > 0);
+    loadMonth(S.month);
+  });
+};
+$('btnCsv').onclick = function () {
+  callC('api_exportTransfer', S.month).then(function (r) {
+    var blob = new Blob(['﻿' + r.csv], { type: 'text/csv' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = r.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+};
+function resetManual() {
+  ['mPayee', 'mCat', 'mAmount', 'mBank', 'mNote', 'mDate'].forEach(function (id) { $(id).value = ''; });
+  $('mMonth').value = S.month || ''; $('mRecur').checked = false; $('mKind').selectedIndex = 0;
+}
+$('btnManualReset').onclick = resetManual;
+$('btnManualAdd').onclick = function () {
+  var d = { '手動種別': $('mKind').value, '支払先': $('mPayee').value, '費用項目': $('mCat').value, '金額': $('mAmount').value,
+    '支払予定日': $('mDate').value.replace(/-/g, '/'), '対象月': $('mMonth').value, '振込先': $('mBank').value, '備考': $('mNote').value };
+  var recur = $('mRecur').checked;
+  callC('api_addManualPayment', d, recur).then(function () {
+    toast('追加しました' + (recur ? '（来月以降も自動で登録します）' : ''));
+    var ym = d['支払予定日'].slice(0, 7).replace('/', '-');
+    resetManual(); loadMonth(ym);
+  });
+};
+
+/* ---------- 支払先マスタ ---------- */
+var MCOLS = ['支払先', '照合キーワード', '費用項目', '振込先', '既定の支払日', 'メモ'];
+function loadMaster() { return callC('api_listMaster').then(function (rows) { S.master = rows; renderMaster(); }); }
+function renderMaster() {
+  if (!S.master.length && canEdit()) S.master.push({});
+  if (!S.master.length) { $('masterBody').innerHTML = '<tr><td colspan="7" class="empty">まだ登録がありません</td></tr>'; return; }
+  var dis = canEdit() ? '' : ' disabled';
+  $('masterBody').innerHTML = S.master.map(function (r, i) {
+    return '<tr>' + MCOLS.map(function (c) {
+      return '<td><input aria-label="' + c + '" data-i="' + i + '" data-c="' + c + '" value="' + esc(r[c] || '') + '"' + dis + '></td>';
+    }).join('') + '<td class="edit-only"><button class="small" data-del="' + i + '">削除</button></td></tr>';
+  }).join('');
+  $('masterBody').querySelectorAll('input').forEach(function (inp) { inp.oninput = function () { S.master[inp.dataset.i][inp.dataset.c] = inp.value; }; });
+  $('masterBody').querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { S.master.splice(Number(b.dataset.del), 1); renderMaster(); }; });
+}
+$('btnMasterAdd').onclick = function () { S.master.push({}); renderMaster(); };
+$('btnMasterSave').onclick = function () {
+  callC('api_saveMaster', S.master).then(function (r) { toast(r.count + '件保存しました'); loadMaster(); });
+};
+
+/* ---------- 管理 ---------- */
+var ROLE_NAMES = { admin: '管理者', editor: '担当者', viewer: '閲覧' };
+function loadAdmin() {
+  return Promise.all([callT('api_admin_listUsers'), callT('api_admin_listClients')]).then(function (res) {
+    S.users = res[0]; S.adminClients = res[1];
+    renderUsers(); renderClientCards(); resetUserForm();
+  });
+}
+function clientName(id) { var c = S.adminClients.filter(function (x) { return x.id === id; })[0]; return c ? c.name : id; }
+function renderUsers() {
+  $('userBody').innerHTML = S.users.map(function (u) {
+    var st = !u.active ? '<span class="badge s-対象外">無効</span>' :u.locked ? '<span class="badge s-エラー">ロック中</span>' : u.mustChange ? '<span class="badge s-未確認">初回変更待ち</span>' : '<span class="badge s-支払済">有効</span>';
+    return '<tr><td>' + esc(u.loginId) + '</td><td>' + esc(u.name) + '</td><td>' + esc(u.roleName) + '</td>' +
+      '<td class="wrap">' + (u.role === 'admin' ? 'すべて' : u.clients.map(clientName).map(esc).join('、')) + '</td>' +
+      '<td>' + st + '</td><td>' + esc(u.lastLogin || '—') + '</td>' +
+      '<td><div class="actions"><button class="small" data-edit="' + esc(u.loginId) + '">編集</button>' +
+      '<button class="small" data-reset="' + esc(u.loginId) + '">パスワード再発行</button>' +
+      (u.locked ? '<button class="small" data-unlock="' + esc(u.loginId) + '">ロック解除</button>' : '') + '</div></td></tr>';
+  }).join('');
+  $('userBody').querySelectorAll('[data-edit]').forEach(function (b) { b.onclick = function () { editUser(b.dataset.edit); }; });
+  $('userBody').querySelectorAll('[data-reset]').forEach(function (b) {
+    b.onclick = function () {
+      if (!confirm(b.dataset.reset + ' のパスワードを再発行します。今のパスワードは使えなくなります。よろしいですか？')) return;
+      callT('api_admin_resetPassword', b.dataset.reset).then(function (r) { showTempPw(b.dataset.reset, r.tempPassword); loadAdminUsers(); });
+    };
+  });
+  $('userBody').querySelectorAll('[data-unlock]').forEach(function (b) {
+    b.onclick = function () { callT('api_admin_unlock', b.dataset.unlock).then(function () { toast('ロックを解除しました'); loadAdminUsers(); }); };
+  });
+}
+function loadAdminUsers() { return callT('api_admin_listUsers').then(function (u) { S.users = u; renderUsers(); }); }
+function renderUserClients(selected) {
+  $('uClients').innerHTML = S.adminClients.map(function (c) {
+    return '<label class="check"><input type="checkbox" value="' + esc(c.id) + '"' + (selected.indexOf(c.id) >= 0 ? ' checked' : '') + '> ' + esc(c.name) + '</label>';
+  }).join('') || '<span class="muted">クライアントがまだありません</span>';
+}
+function syncRoleUi() { $('uClientsWrap').hidden = $('uRole').value === 'admin'; }
+$('uRole').onchange = syncRoleUi;
+function resetUserForm() {
+  S.editUser = null; $('ufTitle').textContent = 'ユーザーを追加';
+  $('uId').value = ''; $('uId').disabled = false; $('uName').value = ''; $('uRole').value = 'viewer';
+  $('uActiveWrap').hidden = true; $('uActive').checked = true;
+  $('btnUserSave').textContent = '追加して仮パスワードを発行';
+  renderUserClients(S.clientId ? [S.clientId] : []); syncRoleUi();
+}
+function editUser(id) {
+  var u = S.users.filter(function (x) { return x.loginId === id; })[0]; if (!u) return;
+  S.editUser = u; $('ufTitle').textContent = 'ユーザーを編集：' + u.loginId;
+  $('uId').value = u.loginId; $('uId').disabled = true; $('uName').value = u.name; $('uRole').value = u.role;
+  $('uActiveWrap').hidden = false; $('uActive').checked = u.active;
+  $('btnUserSave').textContent = '保存';
+  renderUserClients(u.clients); syncRoleUi(); $('pwResult').hidden = true;
+  $('userForm').scrollIntoView({ behavior: 'smooth' });
+}
+$('btnUserCancel').onclick = function () { resetUserForm(); $('pwResult').hidden = true; };
+$('btnUserSave').onclick = function () {
+  var d = { loginId: $('uId').value, name: $('uName').value, role: $('uRole').value, active: $('uActive').checked,
+    clients: [].map.call($('uClients').querySelectorAll('input:checked'), function (i) { return i.value; }) };
+  var isNew = !S.editUser;
+  callT('api_admin_saveUser', d, isNew).then(function (r) {
+    if (isNew) showTempPw(r.user.loginId, r.tempPassword); else toast('保存しました');
+    resetUserForm(); loadAdminUsers();
+  });
+};
+function showTempPw(id, pw) {
+  $('pwResult').hidden = false;
+  $('pwResult').innerHTML = '<b>' + esc(id) + '</b> の仮パスワード：<code>' + esc(pw) + '</code><br>' +
+    '<span class="muted">この画面を閉じると二度と表示されません。本人に安全な方法で伝えてください（初回ログイン時に本人が変更します）。</span>';
+}
+
+/** 管理画面から会社の部品の操作を呼ぶ（clientId を指定して取り次ぐ） */
+function callFor(cid, fn) { return run('api_call', [S.token, cid, fn, [].slice.call(arguments, 2)]); }
+
+function renderClientCards() {
+  $('clientCards').innerHTML = S.adminClients.map(function (c) {
+    return '<div class="card section" data-cid="' + esc(c.id) + '">' +
+      '<div class="head" style="margin-bottom:8px"><div><b style="font-size:16px">' + esc(c.name) + '</b> <span class="muted">(' + esc(c.id) + ')</span><br>' +
+      '<span class="muted" data-info>接続を確認中…</span></div>' +
+      '<div class="actions"><button class="small" data-reload>設定を読み直す</button></div></div>' +
+      '<div data-body hidden>' +
+      '<h3 style="font-size:15px;margin:8px 0">Gmail の取込</h3>' +
+      '<div class="grid2">' +
+      '<div class="field"><label>取込条件（Gmailの検索と同じ書き方）</label><input data-k="gmailQuery"></div>' +
+      '<div class="field"><label>取込済ラベル</label><input data-k="doneLabel"></div>' +
+      '<div class="field"><label>自社名の別表記（宛名を支払先と間違えないように。カンマ区切り）</label><input data-k="ownWords"></div>' +
+      '</div><div class="actions"><button class="small" data-test>対象メールを確認</button><button class="primary small" data-save>取込設定を保存</button></div>' +
+      '<div class="muted" data-result style="margin-top:8px"></div>' +
+      '<h3 style="font-size:15px;margin:20px 0 8px">freee 連携（この会社だけ）</h3>' +
+      '<div class="field"><label>コールバックURL（freeeアプリ側に登録）</label><input data-fx="redirect" readonly></div>' +
+      '<div class="grid2">' +
+      '<div class="field"><label>Client ID</label><input data-fx="cid"></div>' +
+      '<div class="field"><label>Client Secret</label><input data-fx="secret" type="password" placeholder="保存済みなら空欄のまま" autocomplete="off"></div>' +
+      '</div><div class="actions"><button class="small" data-fxsave>保存</button><button class="small primary" data-fxconnect>freeeと連携する</button><button class="small" data-fxoff>連携を解除</button></div>' +
+      '<p class="muted" style="font-size:12px">「freeeと連携する」は、<b>この会社の Google アカウントでログインしているブラウザ</b>で押してください（別のアカウントだと連携が完了しません）。</p>' +
+      '<div class="field"><label>送信先の事業所</label><div class="actions"><select data-fx="company" style="width:auto;min-width:240px"><option value="">（未設定）</option></select>' +
+      '<button class="small" data-fxload>事業所を読み込む</button><button class="small primary" data-fxset>この事業所にする</button></div></div>' +
+      '<p class="muted" data-fxstatus></p>' +
+      '<h3 style="font-size:15px;margin:20px 0 8px">部品の登録情報</h3>' +
+      '<div class="grid2"><div class="field"><label>表示名</label><input data-r="name" value="' + esc(c.name) + '"></div>' +
+      '<div class="field"><label>部品のURL</label><input data-r="url" value="' + esc(c.url) + '"></div>' +
+      '<div class="field"><label>合言葉（変えるときだけ入力）</label><input data-r="secret" type="password" autocomplete="off"></div></div>' +
+      '<button class="small" data-rsave>接続を確かめて更新</button>' +
+      '</div></div>';
+  }).join('') || '<p class="muted">まだ会社が登録されていません。</p>';
+  $('clientCards').querySelectorAll('[data-cid]').forEach(function (card) { bindClientCard(card); });
+}
+
+function bindClientCard(card) {
+  var cid = card.dataset.cid;
+  function q(sel) { return card.querySelector(sel); }
+  function fill(st) {
+    q('[data-body]').hidden = false;
+    q('[data-info]').innerHTML = '接続OK　置き場所：' + esc(st.account) + (st.lastImport ? '　最終取込 ' + esc(st.lastImport) : '') +
+      (st.spreadsheetUrl ? '　<a href="' + esc(st.spreadsheetUrl) + '" target="_blank" rel="noopener">シート</a>' : '') +
+      (st.folderUrl ? '　<a href="' + esc(st.folderUrl) + '" target="_blank" rel="noopener">Driveフォルダ</a>' : '');
+    q('[data-k="gmailQuery"]').value = st.gmailQuery; q('[data-k="doneLabel"]').value = st.doneLabel; q('[data-k="ownWords"]').value = st.ownWords;
+    q('[data-fx="redirect"]').value = st.freee.redirectUri; q('[data-fx="cid"]').value = st.freee.clientId; q('[data-fx="secret"]').value = '';
+    var sel = q('[data-fx="company"]');
+    if (st.freee.companyId && !sel.querySelector('option[value="' + st.freee.companyId + '"]')) {
+      sel.insertAdjacentHTML('beforeend', '<option value="' + esc(st.freee.companyId) + '">' + esc(st.freee.companyName || st.freee.companyId) + '</option>');
+    }
+    sel.value = st.freee.companyId || '';
+    q('[data-fxstatus]').textContent = st.freee.connected
+      ? '連携済み' + (st.freee.companyId ? '／送信先：' + (st.freee.companyName || st.freee.companyId) : '／事業所が未選択です')
+      : '未連携' + (st.freee.hasSecret ? '' : '（Client ID・Secret を保存してから連携してください）');
+  }
+  function reload() {
+    q('[data-info]').textContent = '接続を確認中…';
+    run('api_call', [S.token, cid, 'getSettings', []], true).then(fill, function (e) {
+      q('[data-info]').innerHTML = '<span style="color:var(--ng)">接続できません：' + esc(errMsg(e)) + '</span>';
+      q('[data-body]').hidden = false;
+    });
+  }
+  q('[data-reload]').onclick = reload;
+  q('[data-save]').onclick = function () {
+    callFor(cid, 'saveSettings', { gmailQuery: q('[data-k="gmailQuery"]').value, doneLabel: q('[data-k="doneLabel"]').value, ownWords: q('[data-k="ownWords"]').value })
+      .then(function (st) { fill(st); toast('保存しました'); });
+  };
+  q('[data-test]').onclick = function () {
+    callFor(cid, 'testQuery', q('[data-k="gmailQuery"]').value).then(function (list) {
+      q('[data-result]').innerHTML = list.length
+        ? '未取込のメール ' + list.length + '件（最大20件）：<br>' + list.map(function (t) { return esc(t.date) + '　' + esc(t.subject); }).join('<br>')
+        : '条件に合う未取込のメールはありません';
+    });
+  };
+  q('[data-fxsave]').onclick = function () {
+    callFor(cid, 'freeeSaveApp', q('[data-fx="cid"]').value, q('[data-fx="secret"]').value).then(function (st) { fill(st); toast('保存しました'); });
+  };
+  q('[data-fxconnect]').onclick = function () {
+    callFor(cid, 'freeeAuthUrl').then(function (url) {
+      var w = window.open(url, '_blank');
+      if (!w) prompt('ポップアップがブロックされました。このURLを新しいタブで開いてください', url);
+      toast('freeeで許可したら「設定を読み直す」→「事業所を読み込む」を押してください');
+    });
+  };
+  q('[data-fxoff]').onclick = function () {
+    if (!confirm('この会社の freee 連携を解除します。よろしいですか？')) return;
+    callFor(cid, 'freeeDisconnect').then(function (st) { fill(st); toast('解除しました'); });
+  };
+  q('[data-fxload]').onclick = function () {
+    callFor(cid, 'freeeCompanies').then(function (list) {
+      var sel = q('[data-fx="company"]'), cur = sel.value;
+      sel.innerHTML = '<option value="">（未設定）</option>' + list.map(function (co) {
+        return '<option value="' + esc(co.id) + '"' + (co.id === cur ? ' selected' : '') + '>' + esc(co.name) + '</option>';
+      }).join('');
+      toast(list.length + '件の事業所を読み込みました');
+    });
+  };
+  q('[data-fxset]').onclick = function () {
+    var sel = q('[data-fx="company"]');
+    if (!sel.value) { toast('事業所を選んでください', true); return; }
+    callFor(cid, 'freeeSetCompany', sel.value, sel.options[sel.selectedIndex].text).then(function (st) { fill(st); toast('送信先の事業所を設定しました'); });
+  };
+  q('[data-rsave]').onclick = function () {
+    callT('api_admin_saveClient', { id: cid, name: q('[data-r="name"]').value, url: q('[data-r="url"]').value, secret: q('[data-r="secret"]').value }, false)
+      .then(function () { toast('更新しました'); return refreshSessionClients(); });
+  };
+  reload();
+}
+
+function refreshSessionClients() {
+  return callT('api_me').then(function (s) {
+    S.clients = s.clients;
+    $('clientSel').innerHTML = S.clients.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>'; }).join('');
+    if (!S.clients.some(function (c) { return c.id === S.clientId; })) S.clientId = S.clients.length ? S.clients[0].id : '';
+    $('clientSel').value = S.clientId; $('clientSel').hidden = S.clients.length < 2;
+    $('clientName').textContent = S.clients.length === 1 ? S.clients[0].name : '';
+    return callT('api_admin_listClients').then(function (c) { S.adminClients = c; renderClientCards(); renderUserClients([]); });
+  });
+}
+$('btnClientAdd').onclick = function () {
+  callT('api_admin_saveClient', { id: $('ncId').value, name: $('ncName').value, url: $('ncUrl').value, secret: $('ncSecret').value }, true).then(function (c) {
+    toast(c.name + ' を登録しました（部品側の名前：' + c.remoteName + '）');
+    ['ncId', 'ncName', 'ncUrl', 'ncSecret'].forEach(function (id) { $(id).value = ''; });
+    var first = !S.clientId;
+    return refreshSessionClients().then(function () { if (first) selectClient(c.id, 'admin'); });
+  });
+};
+
+/* ---------- 起動 ---------- */
+(function start() {
+  var t = load('ipt');
+  if (!t) { showLogin(''); return; }
+  S.token = t;
+  run('api_me', [t], true).then(onSession, function (e) {
+    var m = String(e && e.message ? e.message : e);
+    if (m.indexOf('パスワードを変更') < 0) { logoutLocal(); showLogin(''); }
+  });
+})();
+</script>
+</body>
+</html>
