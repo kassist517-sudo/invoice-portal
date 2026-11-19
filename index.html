@@ -114,6 +114,10 @@ body.viewer .edit-only{display:none !important}
 .alert b{color:var(--warn)}
 .alert .items{display:flex;gap:8px;flex-wrap:wrap}
 .alert .items button{min-height:32px;padding:4px 12px;font-size:13px;border-color:#E8C77E;background:#fff}
+.cardhead{align-items:center}
+.cardtoggle{display:flex;gap:10px;align-items:flex-start;text-align:left;border:none;background:none;padding:4px 0;min-height:44px;font-weight:400}
+.cardtoggle:hover b{color:var(--primary)}
+.cardtoggle .chev{font-size:16px;color:var(--muted);width:16px;line-height:24px}
 .navcount{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--warn);color:#fff;font-size:12px;font-weight:700;line-height:20px;text-align:center}
 @media (max-width:820px){
   .bar,main{padding-left:16px;padding-right:16px}
@@ -356,7 +360,7 @@ body.viewer .edit-only{display:none !important}
 <script>
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-var S = { token: '', me: null, clients: [], clientId: '', boot: null, view: 'inbox', inbox: [], filter: 'all', month: null, cur: null, master: [], users: [], adminClients: [], editUser: null, companies: null };
+var S = { openCards: {}, token: '', me: null, clients: [], clientId: '', boot: null, view: 'inbox', inbox: [], filter: 'all', month: null, cur: null, master: [], users: [], adminClients: [], editUser: null, companies: null };
 
 /* ---------- 共通 ---------- */
 function $(id) { return document.getElementById(id); }
@@ -883,11 +887,15 @@ function callFor(cid, fn) { return run('api_call', [S.token, cid, fn, [].slice.c
 
 function renderClientCards() {
   $('clientCards').innerHTML = S.adminClients.map(function (c) {
+    var open = !!S.openCards[c.id];
     return '<div class="card section" data-cid="' + esc(c.id) + '">' +
-      '<div class="head" style="margin-bottom:8px"><div><b style="font-size:16px">' + esc(c.name) + '</b> <span class="muted">(' + esc(c.id) + ')</span><br>' +
-      '<span class="muted" data-info>接続を確認中…</span></div>' +
+      '<div class="head cardhead" style="margin-bottom:0">' +
+      '<div style="flex:1"><button class="cardtoggle" data-toggle aria-expanded="' + open + '" aria-controls="body-' + esc(c.id) + '">' +
+      '<span class="chev" aria-hidden="true">' + (open ? '▾' : '▸') + '</span>' +
+      '<span><b style="font-size:16px">' + esc(c.name) + '</b> <span class="muted">(' + esc(c.id) + ')　' + (open ? '閉じる' : '設定を開く') + '</span></span></button>' +
+      '<div class="muted" data-info style="padding-left:26px">接続を確認中…</div></div>' +
       '<div class="actions"><button class="small" data-reload>設定を読み直す</button></div></div>' +
-      '<div data-body hidden>' +
+      '<div data-body id="body-' + esc(c.id) + '" style="margin-top:12px"' + (open ? '' : ' hidden') + '>' +
       '<h3 style="font-size:15px;margin:8px 0">Gmail の取込</h3>' +
       '<div class="grid2">' +
       '<div class="field"><label>取込条件（Gmailの検索と同じ書き方）</label><input data-k="gmailQuery"></div>' +
@@ -918,9 +926,17 @@ function renderClientCards() {
 function bindClientCard(card) {
   var cid = card.dataset.cid;
   function q(sel) { return card.querySelector(sel); }
+  function setOpen(open) {
+    S.openCards[cid] = open;
+    q('[data-body]').hidden = !open;
+    q('[data-toggle]').setAttribute('aria-expanded', String(open));
+    q('.chev').textContent = open ? '▾' : '▸';
+    q('[data-toggle] .muted').textContent = '(' + cid + ')　' + (open ? '閉じる' : '設定を開く');
+  }
+  q('[data-toggle]').onclick = function () { setOpen(q('[data-body]').hidden); };
   function fill(st) {
-    q('[data-body]').hidden = false;
     q('[data-info]').innerHTML = '接続OK　置き場所：' + esc(st.account) + (st.lastImport ? '　最終取込 ' + esc(st.lastImport) : '') +
+      '　freee：' + (st.freee.connected && st.freee.companyId ? '連携済み' : '未連携') +
       (st.spreadsheetUrl ? '　<a href="' + esc(st.spreadsheetUrl) + '" target="_blank" rel="noopener">シート</a>' : '') +
       (st.folderUrl ? '　<a href="' + esc(st.folderUrl) + '" target="_blank" rel="noopener">Driveフォルダ</a>' : '');
     q('[data-k="gmailQuery"]').value = st.gmailQuery; q('[data-k="doneLabel"]').value = st.doneLabel; q('[data-k="ownWords"]').value = st.ownWords;
@@ -937,8 +953,7 @@ function bindClientCard(card) {
   function reload() {
     q('[data-info]').textContent = '接続を確認中…';
     run('api_call', [S.token, cid, 'getSettings', []], true).then(fill, function (e) {
-      q('[data-info]').innerHTML = '<span style="color:var(--ng)">接続できません：' + esc(errMsg(e)) + '</span>';
-      q('[data-body]').hidden = false;
+      q('[data-info]').innerHTML = '<span style="color:var(--ng)">接続できません：' + esc(errMsg(e)) + '（開いて「受信箱の登録情報」を確認してください）</span>';
     });
   }
   q('[data-reload]').onclick = reload;
