@@ -67,7 +67,11 @@ td.wrap{white-space:normal;min-width:160px}
 .s-未確認,.s-未送信{background:var(--primary-soft);color:var(--primary)}
 .s-要修正,.s-未払い{background:var(--warn-soft);color:var(--warn)}
 .s-読取失敗,.s-エラー{background:var(--ng-soft);color:var(--ng)}
-.s-反映済,.s-支払済,.s-送信済{background:var(--ok-soft);color:var(--ok)}
+.s-反映済,.s-支払済,.s-送信済,.s-振込確認済{background:var(--ok-soft);color:var(--ok)}
+.s-振込依頼中{background:var(--primary-soft);color:var(--primary)}
+.s-口座振替確認済{background:#D5F2EC;color:#0F6B5C}
+select.paysel{width:auto;min-height:32px;padding:3px 28px 3px 12px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid transparent;cursor:pointer}
+select.paysel:focus{outline:2px solid var(--primary);outline-offset:1px}
 .s-除外,.s-対象外{background:#EEF0F3;color:var(--muted)}
 .src{font-size:12px;color:var(--muted)}
 .src.manual{color:var(--purple);font-weight:700}
@@ -360,6 +364,7 @@ body.viewer .edit-only{display:none !important}
 <script>
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+var PAY_STATUSES = ['未払い', '振込依頼中', '振込確認済', '口座振替確認済'];
 var S = { openCards: {}, token: '', me: null, clients: [], clientId: '', boot: null, view: 'inbox', inbox: [], filter: 'all', month: null, cur: null, master: [], users: [], adminClients: [], editUser: null, companies: null };
 
 /* ---------- 共通 ---------- */
@@ -726,8 +731,9 @@ function loadMonth(ym) {
     $('monthSel').innerHTML = d.months.map(function (m) { return '<option value="' + m + '"' + (m === d.ym ? ' selected' : '') + '>' + ymLabel(m) + '</option>'; }).join('');
     $('stTotal').textContent = '¥' + yen(d.total);
     $('stTotalN').textContent = d.counts.all + '件（請求書' + d.counts.invoice + '・手動' + d.counts.manual + '）';
-    $('stUnpaid').textContent = '¥' + yen(d.unpaid); $('stUnpaidN').textContent = '未払い ' + d.counts.unpaid + '件';
-    $('stPaid').textContent = '¥' + yen(d.paid); $('stPaidN').textContent = '済 ' + d.counts.paid + '件';
+    $('stUnpaid').textContent = '¥' + yen(d.unpaid);
+    $('stUnpaidN').textContent = '未払い ' + (d.counts.unpaid - (d.counts.requested || 0)) + '件' + (d.counts.requested ? '・振込依頼中 ' + d.counts.requested + '件' : '');
+    $('stPaid').textContent = '¥' + yen(d.paid); $('stPaidN').textContent = '確認済 ' + d.counts.paid + '件';
     $('btnFreeeMonth').textContent = 'freeeへ送信（未送信 ' + d.counts.freeeUnsent + '件）';
     $('btnFreeeMonth').disabled = !d.counts.freeeUnsent;
     $('syncNote').innerHTML = '<b>経理管理シートと同期</b>　この画面での変更は、シートの「支払一覧」と月次シートにも書き込まれます。' +
@@ -736,8 +742,11 @@ function loadMonth(ym) {
       '<br><b>freeeファイルボックス：</b>請求書PDFを送ります。手動で足した行は対象外です。' + (S.boot && !S.boot.freeeReady ? '（このクライアントはまだ freee の事業所が設定されていません）' : '');
     if (!d.rows.length) { $('monthBody').innerHTML = '<tr><td colspan="9" class="empty">この月の支払はまだありません</td></tr>'; return; }
     $('monthBody').innerHTML = d.rows.map(function (p) {
-      var next = p['状態'] === '支払済' ? '未払い' : '支払済';
-      var status = canEdit() ? '<button class="small" data-pay="' + esc(p.ID) + '" data-next="' + next + '" title="クリックで「' + next + '」に変更">' + badge(p['状態']) + '</button>' : badge(p['状態']);
+      var cur = p['状態'] === '支払済' ? '振込確認済' : p['状態'];
+      var status = canEdit()
+        ? '<select class="paysel s-' + esc(cur) + '" data-pay="' + esc(p.ID) + '" aria-label="' + esc(p['支払先']) + 'の支払状態">' +
+          PAY_STATUSES.map(function (o) { return '<option' + (o === cur ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'
+        : badge(cur);
       var freee = (p['freee状態'] === '未送信' || p['freee状態'] === 'エラー') ? badge(p['freee状態']) + ' <button class="small" data-send="' + esc(p.ID) + '">送信</button>' : badge(p['freee状態']);
       return '<tr>' +
         '<td>' + esc(p['支払予定日']) + '</td>' +
@@ -750,8 +759,11 @@ function loadMonth(ym) {
         '<td>' + (p['DriveファイルID'] ? '<button class="small" data-file="' + esc(p['DriveファイルID']) + '" data-title="' + esc(p['支払先']) + '">見る</button>' : '—') + '</td>' +
         '<td class="edit-only">' + freee + '</td></tr>';
     }).join('');
-    $('monthBody').querySelectorAll('[data-pay]').forEach(function (b) {
-      b.onclick = function () { callC('api_setPayStatus', b.dataset.pay, b.dataset.next).then(function () { loadMonth(S.month); }); };
+    $('monthBody').querySelectorAll('[data-pay]').forEach(function (sel) {
+      sel.onchange = function () {
+        var v = sel.value; sel.className = 'paysel s-' + v; sel.disabled = true;
+        callC('api_setPayStatus', sel.dataset.pay, v).then(function () { toast('「' + v + '」にしました'); loadMonth(S.month); }, function () { loadMonth(S.month); });
+      };
     });
     $('monthBody').querySelectorAll('[data-send]').forEach(function (b) {
       b.onclick = function () { callC('api_sendFreeeOne', b.dataset.send).then(function (r) { toast(r.ok ? 'freeeへ送信しました' : r.message, !r.ok); loadMonth(S.month); }); };
