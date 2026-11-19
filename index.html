@@ -283,17 +283,17 @@ body.viewer .edit-only{display:none !important}
     </div>
 
     <div class="card section">
-      <h2>会社（各社の部品）</h2>
-      <p class="sub">各社の Google アカウントに置いた部品を登録します。Gmail・Drive・シート・freee 連携は、それぞれの会社のアカウントの中だけで動きます。</p>
+      <h2>会社（各社の受信箱）</h2>
+      <p class="sub">各社の Google アカウントに置いた受信箱を登録します。Gmail・Drive・シート・freee 連携は、それぞれの会社のアカウントの中だけで動きます。</p>
       <div id="clientCards"></div>
       <div class="section">
         <h2>会社を登録</h2>
-        <p class="sub">部品の <code>setup</code> を実行したときの実行ログに出る「合言葉」と、部品をデプロイしたときの URL（…/exec）を入れます。登録時に接続を確かめます。</p>
+        <p class="sub">受信箱の <code>setup</code> を実行したときの実行ログに出る「合言葉」と、受信箱をデプロイしたときの URL（…/exec）を入れます。登録時に接続を確かめます。</p>
         <div class="grid2">
           <div class="field"><label for="ncId">クライアントID（半角英小文字）</label><input id="ncId" placeholder="例：companya"></div>
           <div class="field"><label for="ncName">表示名</label><input id="ncName" placeholder="例：A社"></div>
         </div>
-        <div class="field"><label for="ncUrl">部品のURL</label><input id="ncUrl" placeholder="https://script.google.com/macros/s/…/exec"></div>
+        <div class="field"><label for="ncUrl">受信箱のURL</label><input id="ncUrl" placeholder="https://script.google.com/macros/s/…/exec"></div>
         <div class="field"><label for="ncSecret">合言葉</label><input id="ncSecret" type="password" autocomplete="off"></div>
         <button class="primary" id="btnClientAdd">接続を確かめて登録</button>
       </div>
@@ -394,7 +394,7 @@ function run(fn, args, quiet) {
 }
 /** ログイン中の操作（token を付ける） */
 function callT(fn) { return run(fn, [S.token].concat([].slice.call(arguments, 1))); }
-/** 会社の操作（入口ページ経由で、選んでいる会社の部品に取り次ぐ） */
+/** 会社の操作（入口ページ経由で、選んでいる会社の受信箱に取り次ぐ） */
 function callC(fn) { return run('api_call', [S.token, S.clientId, fn.replace(/^api_/, ''), [].slice.call(arguments, 1)]); }
 
 /* ---------- ログイン ---------- */
@@ -436,7 +436,7 @@ function onSession(s) {
   document.body.classList.toggle('viewer', s.me.role === 'viewer');
   if (!S.clients.length) {
     $('clientSel').hidden = true; $('clientName').textContent = '';
-    if (s.me.role === 'admin') { show('admin'); toast('まず「管理」から会社の部品を登録してください'); }
+    if (s.me.role === 'admin') { show('admin'); toast('まず「管理」から会社の受信箱を登録してください'); }
     else { showLogin('見られるクライアントが割り当てられていません。管理者に連絡してください。'); }
     return;
   }
@@ -836,7 +836,7 @@ function showTempPw(id, pw) {
     '<span class="muted">この画面を閉じると二度と表示されません。本人に安全な方法で伝えてください（初回ログイン時に本人が変更します）。</span>';
 }
 
-/** 管理画面から会社の部品の操作を呼ぶ（clientId を指定して取り次ぐ） */
+/** 管理画面から会社の受信箱の操作を呼ぶ（clientId を指定して取り次ぐ） */
 function callFor(cid, fn) { return run('api_call', [S.token, cid, fn, [].slice.call(arguments, 2)]); }
 
 function renderClientCards() {
@@ -863,9 +863,9 @@ function renderClientCards() {
       '<div class="field"><label>送信先の事業所</label><div class="actions"><select data-fx="company" style="width:auto;min-width:240px"><option value="">（未設定）</option></select>' +
       '<button class="small" data-fxload>事業所を読み込む</button><button class="small primary" data-fxset>この事業所にする</button></div></div>' +
       '<p class="muted" data-fxstatus></p>' +
-      '<h3 style="font-size:15px;margin:20px 0 8px">部品の登録情報</h3>' +
+      '<h3 style="font-size:15px;margin:20px 0 8px">受信箱の登録情報</h3>' +
       '<div class="grid2"><div class="field"><label>表示名</label><input data-r="name" value="' + esc(c.name) + '"></div>' +
-      '<div class="field"><label>部品のURL</label><input data-r="url" value="' + esc(c.url) + '"></div>' +
+      '<div class="field"><label>受信箱のURL</label><input data-r="url" value="' + esc(c.url) + '"></div>' +
       '<div class="field"><label>合言葉（変えるときだけ入力）</label><input data-r="secret" type="password" autocomplete="off"></div></div>' +
       '<button class="small" data-rsave>接続を確かめて更新</button>' +
       '</div></div>';
@@ -958,7 +958,7 @@ function refreshSessionClients() {
 }
 $('btnClientAdd').onclick = function () {
   callT('api_admin_saveClient', { id: $('ncId').value, name: $('ncName').value, url: $('ncUrl').value, secret: $('ncSecret').value }, true).then(function (c) {
-    toast(c.name + ' を登録しました（部品側の名前：' + c.remoteName + '）');
+    toast(c.name + ' を登録しました（受信箱側の名前：' + c.remoteName + '）');
     ['ncId', 'ncName', 'ncUrl', 'ncSecret'].forEach(function (id) { $(id).value = ''; });
     var first = !S.clientId;
     return refreshSessionClients().then(function () { if (first) selectClient(c.id, 'admin'); });
